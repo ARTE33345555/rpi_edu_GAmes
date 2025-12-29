@@ -1,123 +1,174 @@
 import tkinter as tk
 import json
-import sys
 import os
-import time
+import sys
 
 SAVE_FILE = "save.json"
 
 # ================= SAVE =================
 def load_save():
-    if not os.path.exists(SAVE_FILE):
-        return None
-    with open(SAVE_FILE, "r") as f:
-        return json.load(f)
-
-def wipe_save():
     if os.path.exists(SAVE_FILE):
-        os.remove(SAVE_FILE)
+        with open(SAVE_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_data(data):
+    with open(SAVE_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 save = load_save()
 
-player_name = sys.argv[1] if len(sys.argv) > 1 else "User"
-
-# ================= WINDOW =================
+# ================= ROOT =================
 root = tk.Tk()
-root.title("Chocolate Rabbit")
-root.configure(bg="#2b1b0e")
+root.title("raspi~$")
+root.configure(bg="black")
 root.attributes("-fullscreen", True)
+root.protocol("WM_DELETE_WINDOW", lambda: None)
 
-canvas = tk.Canvas(root, bg="#2b1b0e", highlightthickness=0)
-canvas.pack(fill="both", expand=True)
+FONT = ("Courier", 14)
+stage = "terminal"
+player_name = ""
 
-w = root.winfo_screenwidth()
-h = root.winfo_screenheight()
+# ================= TERMINAL =================
+text = tk.Text(
+    root,
+    bg="black",
+    fg="#00ff00",
+    insertbackground="#00ff00",
+    font=FONT,
+    borderwidth=0
+)
+text.pack(fill="both", expand=True)
+text.focus()
 
-# ================= RABBIT =================
-rabbit = canvas.create_oval(
-    w//2 - 40, h//2 - 40,
-    w//2 + 40, h//2 + 40,
-    fill="#5a2e1a", outline="#ffcccc", width=3
+def write(msg):
+    text.insert("end", msg)
+    text.see("end")
+
+write(
+    "raspi~$ boot\n"
+    "Booting Training OS...\n\n"
+    "Enter your name:\n"
+    "raspi~$ "
 )
 
-text = canvas.create_text(
-    w//2, h//2 + 80,
-    text="Chocolate Rabbit is watching you...",
-    fill="white",
-    font=("Arial", 20)
-)
+# ================= TRAINING =================
+def start_training():
+    global stage
+    stage = "training"
 
-stage = 0
-anger = save["system"]["anger_level"] if save else 0
+    root.attributes("-fullscreen", False)
+    root.overrideredirect(True)
+    root.geometry("420x240+100+100")
+    root.configure(bg="white")
 
-# ================= DIALOG =================
-DIALOG = [
-    f"{player_name}...",
-    "You reached the end of the screen.",
-    "I lost my power to melt.",
-    "I lost my power to jump between screens.",
-    "But my mother power remains.",
-    "If you talk to me too much...",
-    "I will reset your save.",
-    "This is not a joke.",
-    "Press SPACE to continue.",
-]
+    for w in root.winfo_children():
+        w.destroy()
 
-def update_text():
-    canvas.itemconfig(text, text=DIALOG[stage])
+    canvas = tk.Canvas(root, bg="white", highlightthickness=0)
+    canvas.pack(fill="both", expand=True)
 
-# ================= INPUT =================
-def on_key(event):
-    global stage, anger
+    # arrow parts
+    arrow_line = canvas.create_line(0, 0, 0, 0, width=4, fill="black")
+    arrow_head = canvas.create_polygon(0, 0, 0, 0, 0, 0, fill="black")
 
-    if event.keysym == "space":
-        stage += 1
-
-        anger += 1
-        if save:
-            save["system"]["anger_level"] = anger
-            with open(SAVE_FILE, "w") as f:
-                json.dump(save, f, indent=2)
-
-        if stage >= len(DIALOG):
-            final_event()
-        else:
-            update_text()
-
-    elif event.keysym == "Escape":
-        root.destroy()
-
-# ================= FINAL =================
-def final_event():
-    canvas.itemconfig(
-        text,
-        text="You talked too much.\nSave deleted.\nRestarting adventure..."
+    hint_text = canvas.create_text(
+        210, 200,
+        text="Enter — continue | Escape — exit",
+        font=("Arial", 11),
+        fill="gray"
     )
 
-    root.update()
-    time.sleep(2)
+    message = canvas.create_text(
+        210, 40,
+        text="",
+        font=("Arial", 14),
+        fill="black"
+    )
 
-    wipe_save()
+    # steps: window pos, arrow start/end, text
+    steps = [
+        {"win": (100, 100), "arrow": (40, 120, 160, 120), "text": "This is your workspace"},
+        {"win": (600, 120), "arrow": (160, 60, 60, 60), "text": "Windows can move freely"},
+        {"win": (300, 400), "arrow": (40, 160, 160, 80), "text": "Follow visual instructions"},
+        {"win": (800, 300), "arrow": (160, 160, 60, 80), "text": "Training almost complete"}
+    ]
+
+    step = -1
+
+    def apply_step():
+        data = steps[step]
+        x, y = data["win"]
+        root.geometry(f"+{x}+{y}")
+
+        x1, y1, x2, y2 = data["arrow"]
+        canvas.coords(arrow_line, x1, y1, x2, y2)
+        canvas.coords(
+            arrow_head,
+            x2, y2,
+            x2 - 15, y2 - 8,
+            x2 - 15, y2 + 8
+        )
+        canvas.itemconfig(message, text=data["text"])
+
+    def next_step(event=None):
+        nonlocal step
+        step += 1
+        if step >= len(steps):
+            finish_training()
+            return
+        apply_step()
+
+    root.bind("<Return>", next_step)
+    root.bind("<Escape>", lambda e: root.destroy())
+
+    next_step()
+
+# ================= FINISH =================
+def finish_training():
+    save["player"] = {"name": player_name}
+    save["system"] = {"training_complete": True}
+    save_data(save)
+
+    root.destroy()
+    # запуск следующей программы RabbitGame.py
+    os.execv(sys.executable, [sys.executable, "RabbitGame.py"])
+
+# ================= INPUT =================
+def on_enter(event):
+    global player_name
+
+    if stage != "terminal":
+        return "break"
+
+    line = text.get("insert linestart", "insert lineend")
+    cmd = line.replace("raspi~$ ", "").strip()
+    write("\n")
+
+    if player_name == "":
+        player_name = cmd
+        write(f"Welcome, {player_name}\n")
+        write("Type 'start' to begin training or 'run' to launch the game\nraspi~$ ")
+    elif cmd.lower() == "start":
+        start_training()
+    elif cmd.lower() == "run":
+        # сохраняем имя
+        save["player"] = {"name": player_name}
+        save_data(save)
+
+        # запускаем другую программу
+        root.destroy()
+        os.execv(sys.executable, [sys.executable, "rabbit_game.py"])
+    else:
+        write("Command not found\nraspi~$ ")
+
+    return "break"
+
+def on_escape(event):
     root.destroy()
 
-# ================= MOVE RABBIT =================
-dx, dy = 3, 2
+# ================= BINDS =================
+text.bind("<Return>", on_enter)
+root.bind("<Escape>", on_escape)
 
-def move_rabbit():
-    global dx, dy
-    x1, y1, x2, y2 = canvas.coords(rabbit)
-
-    if x1 <= 0 or x2 >= w:
-        dx *= -1
-    if y1 <= 0 or y2 >= h:
-        dy *= -1
-
-    canvas.move(rabbit, dx, dy)
-    root.after(16, move_rabbit)
-
-# ================= START =================
-update_text()
-move_rabbit()
-
-root.bind("<Key>", on_key)
 root.mainloop()
