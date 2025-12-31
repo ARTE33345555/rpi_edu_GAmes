@@ -13,4 +13,4 @@ Your children will understand Python programming, wiring, and Scratch, and how t
 
 Wait for the last update because it will be the end of the game itself.
 
-Spoiler: he's our main character and he's a sister ??
+Spoiler: he's our main character and he's a sister SD card
