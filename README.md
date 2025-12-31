@@ -11,6 +11,8 @@ The game is a working game for children using Raspberry Pi. It's not finished ye
 
 Your children will understand Python programming, wiring, and Scratch, and how to create a desktop in two parts. By the way, it creates a Json file.
 
-Wait for the last update because it will be the end of the game itself.
+Spoiler: Our main character will get stuck on the SD memory card!
 
-Spoiler: he's our main character and he's a sister SD card
+Wait for the final update, as it will bring the game’s story to its conclusion..................
+
+
